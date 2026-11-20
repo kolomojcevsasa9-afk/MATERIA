@@ -1,0 +1,25 @@
+* linguist-vendored
+
+*.rs linguist-detectable=true
+*.rs linguist-language=Rust
+
+Cargo.toml linguist-detectable=true
+Cargo.lock linguist-detectable=true
+Cargo.toml linguist-language=Rust
+Cargo.lock linguist-language=Rust
+
+/blog/** linguist-vendored
+/docker/** linguist-vendored
+target/** linguist-vendored
+scripts/** linguist-vendored
+.github/** linguist-vendored
+*.html linguist-vendored
+*.css linguist-vendored
+*.scss linguist-vendored
+*.js linguist-vendored
+*.py linguist-vendored
+*.sh linguist-vendored
+*.toml linguist-vendored
+*.md linguist-vendored
+*.json linguist-vendored
+*.lock linguist-vendored
