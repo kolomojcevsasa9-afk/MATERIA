@@ -26,4 +26,17 @@ pub fn scancode_to_ascii(scancode: u8) -> Option<char> {
     }
 }
 
+pub fn poll_keyboard(terminal: &mut crate::terminal::Terminal) -> bool {
+    let status = crate::io::inb(0x64);
+    if (status & 0x01) != 0 && (status & 0x20) == 0 {
+        let scancode = crate::io::read_scancode();
+        if scancode != 0 && scancode != 0xE0 && scancode != 0xE1 && (scancode & 0x80) == 0 {
+            terminal.process_input(scancode);
+            return true;
+        }
+    }
+    false
+}
+
+
 

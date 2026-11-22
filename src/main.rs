@@ -3,7 +3,6 @@
 #![allow(bad_asm_style)]
 #![allow(dead_code)]
 
-
 mod vga_buffer;
 extern crate rlibc;
 mod io;
@@ -16,6 +15,9 @@ mod allocator;
 mod mouse;
 mod graphics;
 mod sdf;
+mod window;
+mod terminal;
+mod font_atlas;
 
 use core::panic::PanicInfo;
 
@@ -27,7 +29,6 @@ fn panic(_info: &PanicInfo) -> ! {
 }
 
 pub fn kernel_main(_boot_info: &'static bootloader::BootInfo) -> ! {
-    // Включаем FPU/SSE
     unsafe {
         core::arch::asm!(
             "mov rax, cr0",
@@ -44,23 +45,62 @@ pub fn kernel_main(_boot_info: &'static bootloader::BootInfo) -> ! {
     sdf::init();
     let mut mouse = crate::mouse::Mouse::new();
     mouse.init();
+    let mut terminal = crate::terminal::Terminal::new();
 
-    let mut old_x = mouse.x;
-    let mut old_y = mouse.y;
+    let mut win = crate::window::Window::new(100, 50, 120, 80);
 
-    // Первоначальный рендеринг курсора в начальной позиции
-    sdf::render_cursor(old_x, old_y, mouse.x, mouse.y);
+    let mut old_mx = mouse.x;
+    let mut old_my = mouse.y;
+    let mut was_pressed = false;
 
-    // Ультра-быстрый цикл: перерисовываем только dirty-область при движении курсора
+    sdf::render_frame_with_terminal(win.x, win.y, win.w, win.h, win.is_fullscreen, mouse.x, mouse.y, &terminal);
+
     loop {
-        if mouse.poll() || old_x != mouse.x || old_y != mouse.y {
-            sdf::render_cursor(old_x, old_y, mouse.x, mouse.y);
-            old_x = mouse.x;
-            old_y = mouse.y;
+        let mut input_updated = false;
+        
+        // Читаем ТОЛЬКО клавиатурные пакеты с портов (проверяя статус бит 5), не трогая пакеты мыши
+        while crate::keyboard::poll_keyboard(&mut terminal) {
+            input_updated = true;
+        }
+
+        if mouse.poll() || input_updated {
+            let dx = mouse.x - old_mx;
+            let dy = mouse.y - old_my;
+
+            let click_event = mouse.left_button && !was_pressed;
+            was_pressed = mouse.left_button;
+
+            if click_event {
+                if mouse.x >= win.x + win.w - 16 && mouse.x <= win.x + win.w - 4 && mouse.y >= win.y && mouse.y <= win.y + 14 {
+                    win.toggle_fullscreen();
+                }
+                else if !win.is_fullscreen && mouse.x >= win.x + win.w - 12 && mouse.x <= win.x + win.w && mouse.y >= win.y + win.h - 12 && mouse.y <= win.y + win.h {
+                    win.resizing = true;
+                }
+                else if mouse.x >= win.x && mouse.x < win.x + win.w && mouse.y >= win.y && mouse.y < win.y + 14 {
+                    if !win.is_fullscreen {
+                        win.dragging = true;
+                    }
+                }
+            }
+
+            if mouse.left_button {
+                if win.dragging {
+                    win.x = (win.x + dx).clamp(0, 320 - win.w);
+                    win.y = (win.y + dy).clamp(0, 180 - win.h);
+                } else if win.resizing {
+                    win.w = (win.w + dx).clamp(50, 320 - win.x);
+                    win.h = (win.h + dy).clamp(35, 180 - win.y);
+                }
+            } else {
+                win.dragging = false;
+                win.resizing = false;
+            }
+
+            old_mx = mouse.x;
+            old_my = mouse.y;
+
+            sdf::render_frame_with_terminal(win.x, win.y, win.w, win.h, win.is_fullscreen, mouse.x, mouse.y, &terminal);
         }
     }
 }
-
-
-
-
