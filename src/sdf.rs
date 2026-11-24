@@ -72,6 +72,7 @@ fn sd_rounded_box_aa(px: f32, py: f32, w: f32, h: f32, r: f32) -> f32 {
 
 pub fn init() {
     init_vga_palette();
+<<<<<<< HEAD
     unsafe {
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
@@ -81,6 +82,82 @@ pub fn init() {
         for y in (HEIGHT - 20)..HEIGHT {
             for x in 0..WIDTH {
                 WALLPAPER_BUFFER[y * WIDTH + x] = rgb_to_vga(0.05, 0.05, 0.1);
+=======
+
+    let cx = 160.0f32; 
+    let cy = 100.0f32;
+    let box_size = 60.0f32;
+    let corner_r = 10.0f32;
+
+    unsafe {
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
+                let px = x as f32 - cx;
+                let py = y as f32 - cy;
+
+                // SDF для скругленного прямоугольника
+                let qx = abs_f32(px) - box_size + corner_r;
+                let qy = abs_f32(py) - box_size + corner_r;
+                let dist = sqrt_f32(max_f32(qx, 0.0) * max_f32(qx, 0.0) + max_f32(qy, 0.0) * max_f32(qy, 0.0)) + min_f32(max_f32(qx, qy), 0.0) - corner_r;
+
+                let color = if dist <= 0.0 {
+                    // Внутри: темно-серый
+                    15 
+                } else if dist < 2.0 {
+                    // Рамка: светло-серый
+                    20
+                } else {
+                    // Фон: средний серый
+                    10
+                };
+
+                BACKGROUND_BUFFER[y * WIDTH + x] = color;
+            }
+        }
+        
+        let vram = 0xA0000 as *mut u64;
+        let bg_ptr = core::ptr::addr_of!(BACKGROUND_BUFFER) as *const u64;
+        for i in 0..(WIDTH * HEIGHT / 8) {
+            *vram.add(i) = *bg_ptr.add(i);
+        }
+    }
+}
+pub fn render_cursor(old_x: i32, old_y: i32, new_x: i32, new_y: i32) {
+    let vram = 0xA0000 as *mut u8;
+
+    unsafe {
+        // 1. Восстанавливаем фоновый ShaderToy рисунок под СТАРЫМ курсором
+        for cy in 0..MOUSE_CURSOR_HEIGHT {
+            let py = old_y as usize + cy;
+            if py >= HEIGHT { break; }
+
+            for cx in 0..MOUSE_CURSOR_WIDTH {
+                let px = old_x as usize + cx;
+                if px >= WIDTH { break; }
+
+                if MOUSE_CURSOR[cy][cx] != 0 {
+                    let idx = py * WIDTH + px;
+                    *vram.add(idx) = BACKGROUND_BUFFER[idx];
+                }
+            }
+        }
+
+        // 2. Рисуем курсор Windows под НОВЫМИ координатами
+        for cy in 0..MOUSE_CURSOR_HEIGHT {
+            let py = new_y as usize + cy;
+            if py >= HEIGHT { break; }
+
+            for cx in 0..MOUSE_CURSOR_WIDTH {
+                let px = new_x as usize + cx;
+                if px >= WIDTH { break; }
+
+                let pixel_type = MOUSE_CURSOR[cy][cx];
+                if pixel_type == 1 {
+                    *vram.add(py * WIDTH + px) = 0;   // Черная каемка
+                } else if pixel_type == 2 {
+                    *vram.add(py * WIDTH + px) = 255; // Белая стрелочка
+                }
+>>>>>>> 994f2afb (SDF interface 0.14)
             }
         }
     }
