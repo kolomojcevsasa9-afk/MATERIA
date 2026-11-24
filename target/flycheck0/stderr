@@ -1,2 +1,13 @@
+   Compiling compiler_builtins v0.1.160 (/home/mops/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/compiler-builtins/compiler-builtins)
+   Compiling core v0.0.0 (/home/mops/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core)
+   Compiling bootloader v0.9.35
+   Compiling alloc v0.0.0 (/home/mops/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc)
+    Checking scopeguard v1.2.0
+    Checking font8x8 v0.2.7
+    Checking rlibc v1.0.0
+    Checking lock_api v0.4.14
+    Checking spin v0.9.9
+    Checking lazy_static v1.5.1
     Checking blog_os v0.1.0 (/home/mops/blog_os)
 error: could not compile `blog_os` (bin "blog_os" test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
