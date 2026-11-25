@@ -8,6 +8,10 @@ lazy_static = { version = "1.4", features = ["spin_no_std"] }
 spin = "0.9"
 rlibc = "1.0"
 bootloader = { version = "0.9.23", features = ["vga_320x200"] }
+x86_64 = "0.15"
+libm = { version = "0.2", default-features = false }
+num-traits = { version = "0.2", default-features = false, features = ["libm"] }
+
 
 [profile.dev]
 panic = "abort"

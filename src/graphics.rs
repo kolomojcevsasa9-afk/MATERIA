@@ -62,3 +62,18 @@ pub fn draw_char_bitmap(fb: &mut [u8], x: usize, y: usize, ch: u8, color: u8) {
         }
     }
 }
+
+// Оптимизированная отрисовка шрифта (пропорциональный шрифт)
+pub fn draw_char(fb: &mut [u8], x: usize, y: usize, ch: char, color: u8) {
+    // В будущем здесь будет загрузка данных из font_atlas
+    // Сейчас мы расширим текущую bitmap для поддержки большего количества символов
+    draw_char_bitmap(fb, x, y, ch as u8, color);
+}
+pub fn draw_string(fb: &mut [u8], mut x: usize, y: usize, s: &str, color: u8) {
+    for c in s.chars() {
+        draw_char(fb, x, y, c, color);
+        x += 6; // ширина символа + отступ
+    }
+}
+
+

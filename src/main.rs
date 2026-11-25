@@ -1,8 +1,10 @@
 #![no_std]
 #![no_main]
+#![feature(abi_x86_interrupt)]
 #![allow(bad_asm_style)]
 #![allow(dead_code)]
 
+mod sdf_engine;
 mod vga_buffer;
 extern crate rlibc;
 mod io;
@@ -18,6 +20,8 @@ mod sdf;
 mod window;
 mod terminal;
 mod font_atlas;
+mod interrupts;
+
 
 use core::panic::PanicInfo;
 
@@ -39,8 +43,18 @@ pub fn kernel_main(_boot_info: &'static bootloader::BootInfo) -> ! {
             "or ax, 0x0600",
             "mov cr4, rax",
             options(nostack, preserves_flags)
+    // crate::interrupts::init_idt(); 
+    // unsafe { x86_64::instructions::interrupts::enable(); } 
+    // crate::pci::scan_pci();
+
         );
     }
+    // crate::interrupts::init_idt(); // Закомментировали, чтобы временно отключить прерывания
+    // Диагностика PCI
+    crate::pci::scan_pci();
+
+    // unsafe { x86_64::instructions::interrupts::enable(); } // И это тоже
+
 
     sdf::init();
     let mut mouse = crate::mouse::Mouse::new();
