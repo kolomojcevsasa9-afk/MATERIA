@@ -72,18 +72,6 @@ fn sd_rounded_box_aa(px: f32, py: f32, w: f32, h: f32, r: f32) -> f32 {
 
 pub fn init() {
     init_vga_palette();
-<<<<<<< HEAD
-    unsafe {
-        for y in 0..HEIGHT {
-            for x in 0..WIDTH {
-                WALLPAPER_BUFFER[y * WIDTH + x] = 0; 
-            }
-        }
-        for y in (HEIGHT - 20)..HEIGHT {
-            for x in 0..WIDTH {
-                WALLPAPER_BUFFER[y * WIDTH + x] = rgb_to_vga(0.05, 0.05, 0.1);
-=======
-
     let cx = 160.0f32; 
     let cy = 100.0f32;
     let box_size = 60.0f32;
@@ -95,160 +83,81 @@ pub fn init() {
                 let px = x as f32 - cx;
                 let py = y as f32 - cy;
 
-                // SDF для скругленного прямоугольника
                 let qx = abs_f32(px) - box_size + corner_r;
                 let qy = abs_f32(py) - box_size + corner_r;
                 let dist = sqrt_f32(max_f32(qx, 0.0) * max_f32(qx, 0.0) + max_f32(qy, 0.0) * max_f32(qy, 0.0)) + min_f32(max_f32(qx, qy), 0.0) - corner_r;
 
                 let color = if dist <= 0.0 {
-                    // Внутри: темно-серый
                     15 
                 } else if dist < 2.0 {
-                    // Рамка: светло-серый
                     20
                 } else {
-                    // Фон: средний серый
                     10
                 };
 
-                BACKGROUND_BUFFER[y * WIDTH + x] = color;
+                WALLPAPER_BUFFER[y * WIDTH + x] = color;
             }
         }
         
         let vram = 0xA0000 as *mut u64;
-        let bg_ptr = core::ptr::addr_of!(BACKGROUND_BUFFER) as *const u64;
+        let bg_ptr = core::ptr::addr_of!(WALLPAPER_BUFFER) as *const u64;
         for i in 0..(WIDTH * HEIGHT / 8) {
             *vram.add(i) = *bg_ptr.add(i);
         }
     }
 }
-pub fn render_cursor(old_x: i32, old_y: i32, new_x: i32, new_y: i32) {
-    let vram = 0xA0000 as *mut u8;
 
+pub fn render_frame_with_terminal(x: i32, y: i32, w: i32, h: i32, fullscreen: bool, mx: i32, my: i32, term: &crate::terminal::Terminal) {
     unsafe {
-        // 1. Восстанавливаем фоновый ShaderToy рисунок под СТАРЫМ курсором
-        for cy in 0..MOUSE_CURSOR_HEIGHT {
-            let py = old_y as usize + cy;
-            if py >= HEIGHT { break; }
+        // Clear frame buffer with background color
+        for i in 0..(WIDTH * HEIGHT) {
+            FRAME_BUFFER[i] = WALLPAPER_BUFFER[i];
+        }
 
-            for cx in 0..MOUSE_CURSOR_WIDTH {
-                let px = old_x as usize + cx;
-                if px >= WIDTH { break; }
-
-                if MOUSE_CURSOR[cy][cx] != 0 {
-                    let idx = py * WIDTH + px;
-                    *vram.add(idx) = BACKGROUND_BUFFER[idx];
+        // Draw window
+        for wy in 0..h {
+            for wx in 0..w {
+                let px = (x + wx) as usize;
+                let py = (y + wy) as usize;
+                if px < WIDTH && py < HEIGHT {
+                    let color = if (wx == 0 || wx == w - 1 || wy == 0 || wy == h - 1) { 15 } else { 0 };
+                    FRAME_BUFFER[py * WIDTH + px] = color;
                 }
             }
         }
 
-        // 2. Рисуем курсор Windows под НОВЫМИ координатами
-        for cy in 0..MOUSE_CURSOR_HEIGHT {
-            let py = new_y as usize + cy;
-            if py >= HEIGHT { break; }
-
-            for cx in 0..MOUSE_CURSOR_WIDTH {
-                let px = new_x as usize + cx;
-                if px >= WIDTH { break; }
-
-                let pixel_type = MOUSE_CURSOR[cy][cx];
-                if pixel_type == 1 {
-                    *vram.add(py * WIDTH + px) = 0;   // Черная каемка
-                } else if pixel_type == 2 {
-                    *vram.add(py * WIDTH + px) = 255; // Белая стрелочка
-                }
->>>>>>> 994f2afb (SDF interface 0.14)
-            }
-        }
-    }
-}
-
-pub fn render_frame(win_x: i32, win_y: i32, win_w: i32, win_h: i32, is_fullscreen: bool, mouse_x: i32, mouse_y: i32) {
-    unsafe {
-        let src_ptr = core::ptr::addr_of!(WALLPAPER_BUFFER) as *const u64;
-        let dst_ptr = core::ptr::addr_of_mut!(FRAME_BUFFER) as *mut u64;
-        for i in 0..(WIDTH * HEIGHT / 8) {
-            *dst_ptr.add(i) = *src_ptr.add(i);
-        }
-
-        let fb_ptr = core::ptr::addr_of_mut!(FRAME_BUFFER) as *mut u8;
-
-        let half_w = win_w as f32 / 2.0;
-        let half_h = win_h as f32 / 2.0;
-        let win_cx = win_x as f32 + half_w;
-        let win_cy = win_y as f32 + half_h;
-        let corner_r = if is_fullscreen { 0.0 } else { 12.0 }; // Увеличенный радиус для красоты
-
-        for wy in 0..win_h {
-            let py = win_y + wy;
-            if py < 0 || py >= HEIGHT as i32 { continue; }
-            for wx in 0..win_w {
-                let px = win_x + wx;
-                if px < 0 || px >= WIDTH as i32 { continue; }
-                
-                let d = sd_rounded_box_aa(px as f32 - win_cx, py as f32 - win_cy, half_w, half_h, corner_r);
-                
-                // Anti-aliasing с помощью smoothstep
-                let alpha = 1.0 - smoothstep(0.0, 1.5, d);
-                
-                let idx = py as usize * WIDTH + px as usize;
-                if d < 0.0 {
-                    let col = if wy < 14 { rgb_to_vga(0.2, 0.3, 0.5) } else { rgb_to_vga(0.1, 0.1, 0.2) };
-                    *fb_ptr.add(idx) = col;
-                } else if alpha > 0.0 {
-                    // Смешивание для плавности
-                    *fb_ptr.add(idx) = 255;
+        // Draw terminal text
+        for ty in 0..crate::terminal::ROWS {
+            for tx in 0..crate::terminal::COLS {
+                let ch = term.buffer[ty][tx];
+                let px = (x + 4 + tx as i32 * 6) as usize;
+                let py = (y + 16 + ty as i32 * 8) as usize;
+                if px + 5 < WIDTH && py + 7 < HEIGHT {
+                    crate::graphics::draw_char_bitmap(&mut FRAME_BUFFER, px, py, ch, 15);
                 }
             }
         }
 
-        for cy in 0..MOUSE_CURSOR_HEIGHT {
-            let py = mouse_y + cy as i32;
-            if py < 0 || py >= HEIGHT as i32 { continue; }
-            for cx in 0..MOUSE_CURSOR_WIDTH {
-                let px = mouse_x + cx as i32;
-                if px < 0 || px >= WIDTH as i32 { continue; }
-                let ptype = MOUSE_CURSOR[cy][cx];
-                let idx = py as usize * WIDTH + px as usize;
-                if ptype == 1 { *fb_ptr.add(idx) = 0; }
-                else if ptype == 2 { *fb_ptr.add(idx) = 255; }
+        // Draw mouse cursor
+        for my_pos in 0..MOUSE_CURSOR_HEIGHT {
+            for mx_pos in 0..MOUSE_CURSOR_WIDTH {
+                let px = (mx + mx_pos as i32) as usize;
+                let py = (my + my_pos as i32) as usize;
+                if px < WIDTH && py < HEIGHT {
+                    match MOUSE_CURSOR[my_pos][mx_pos] {
+                        1 => FRAME_BUFFER[py * WIDTH + px] = 15,
+                        2 => FRAME_BUFFER[py * WIDTH + px] = 0,
+                        _ => {}
+                    }
+                }
             }
         }
 
+        // Copy to VRAM
         let vram = 0xA0000 as *mut u64;
-        let frame_ptr = core::ptr::addr_of!(FRAME_BUFFER) as *const u64;
+        let fb_ptr = core::ptr::addr_of!(FRAME_BUFFER) as *const u64;
         for i in 0..(WIDTH * HEIGHT / 8) {
-            *vram.add(i) = *frame_ptr.add(i);
-        }
-    }
-}
-
-pub fn render_frame_with_terminal(win_x: i32, win_y: i32, win_w: i32, win_h: i32, is_fullscreen: bool, mouse_x: i32, mouse_y: i32, terminal: &crate::terminal::Terminal) {
-    render_frame(win_x, win_y, win_w, win_h, is_fullscreen, mouse_x, mouse_y);
-    render_terminal_contents(win_x, win_y, win_w, win_h, terminal);
-    
-    unsafe {
-        let vram = 0xA0000 as *mut u64;
-        let frame_ptr = core::ptr::addr_of!(FRAME_BUFFER) as *const u64;
-        for i in 0..(WIDTH * HEIGHT / 8) {
-            *vram.add(i) = *frame_ptr.add(i);
-        }
-    }
-}
-
-pub fn render_terminal_contents(win_x: i32, win_y: i32, win_w: i32, win_h: i32, terminal: &crate::terminal::Terminal) {
-    let fb_ptr = core::ptr::addr_of_mut!(crate::sdf::FRAME_BUFFER) as *mut u8;
-    let fb_slice = unsafe { core::slice::from_raw_parts_mut(fb_ptr, WIDTH * HEIGHT) };
-    
-    // Отрисовка символов в окне
-    for ty in 0..crate::terminal::ROWS {
-        for tx in 0..crate::terminal::COLS {
-            let ch = terminal.buffer[ty][tx];
-            let px = win_x + 5 + (tx * 6) as i32;
-            let py = win_y + 16 + (ty * 10) as i32;
-            if px < win_x + win_w && py < win_y + win_h && px >= 0 && py >= 0 {
-                crate::graphics::draw_char_bitmap(fb_slice, px as usize, py as usize, ch, 255);
-            }
+            *vram.add(i) = *fb_ptr.add(i);
         }
     }
 }
